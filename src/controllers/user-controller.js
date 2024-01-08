@@ -1,7 +1,7 @@
 const { User } = require('../models/user-model');
 const bcrypt = require('bcryptjs');
 const jwt = require("jsonwebtoken");
-const { refreshToken, accessToken } = require('../utils/token');
+const { refreshTokens, accessTokens } = require('../utils/token-generation');
 
 
 exports.userRegister = async(req,res) => {
@@ -12,7 +12,8 @@ exports.userRegister = async(req,res) => {
             email : req.body.email,
             avatar : toString(req.body.avatar),
             coverimage : req.body.coverimage,
-            password : bcrypt.hashSync(req.body.password,8)
+            password : bcrypt.hashSync(req.body.password,8),
+
         }
         console.log('look Here userObj in registration',{
             name : req.body.name,
@@ -29,11 +30,15 @@ exports.userRegister = async(req,res) => {
             username : createUser.username,
             email : createUser.email,
             avatar : req.files, 
-            coverimage : createUser.coverimage   
+            coverimage : createUser.coverimage ,
+            
         }
         res.status(201).send(response);
     } catch (error) {
-        console.log(`error in user registration ${error}`);
+        console.log(`error in userRegister() : ${error}`);
+        return res.status(500).send({
+            messgae : `error in userRegister() : ${error}`
+        });
     }
 }
 
@@ -45,13 +50,13 @@ exports.userAuthentication = async(req,res) => {
         const user = await User.findOne({$or : [{username: username},{email : email}]});
 
         if(!user){
-            res.status(400).send({message : "Email or Username is not registered."});
+            return res.status(400).send({message : "Email or Username is not registered."});
         }
 
         const validPass = bcrypt.compareSync(req.body.password, user.password);
 
         if(!validPass){
-            res.status(400).send({message : "Password is incorrect."});
+            return res.status(400).send({message : "Password is incorrect."});
         } 
 
 
@@ -61,8 +66,8 @@ exports.userAuthentication = async(req,res) => {
             email : user.email,
             avatar : req.files, 
             coverimage : user.coverimage,
-            accessToken :  accessToken(user),
-            refreshToken  : refreshToken(user)
+            accessToken :  accessTokens(user),
+            refreshToken  : refreshTokens(user)
         }
 
         const options = {
@@ -71,14 +76,23 @@ exports.userAuthentication = async(req,res) => {
         }
         
         // res.status(201).send(response);
+        user.accessToken = response.accessToken;
+        user.refreshToken = response.refreshToken;
+        
+        await user.save();
+
+        console.log('user test', user);
 
         res.status(201)
-        .cookie("accessToken",accessToken(user), options)
-        .cookie("refreshToken",refreshToken(user), options)
+        .cookie("accessToken",accessTokens(user), options)
+        .cookie("refreshToken",refreshTokens(user), options)
         .send(response)
         
     } catch (error) {
-        console.log(`error in user authentication ${error}`);
+        console.log(`error in userAuthentication() :  ${error}`);
+        return res.status(500).send({
+            messgae : `error in userAuthentication() : ${error}`
+        });
     }
 }
 
@@ -97,7 +111,7 @@ exports.userUpdate = async(req,res) => {
 
         const response = { 
             name : user.name,
-            username : user.username,
+            username : user.username, 
             email : user.email,
             avatar : req.files, 
             coverimage : user.coverimage
@@ -107,7 +121,9 @@ exports.userUpdate = async(req,res) => {
 
     } catch (error) {
         console.log('error in userUpdate() :', error);
-        res.status(500).send(error)
+        return res.status(500).send({
+            messgae : `error in userUpdate() : ${error}`
+        });
     }
 }
 
@@ -146,7 +162,9 @@ exports.logoutUser = async(req, res) => {
 
  } catch (error) {
     console.log('error in logoutUser() :', error);
-    res.status(500).send({message : error})
+    return res.status(500).send({
+        messgae : `error in logoutUser() : ${error}`
+    });
  }
 }
  
@@ -159,16 +177,59 @@ exports.userDelete = async(req,res) => {
         
     } catch (error) {
         console.log('error in userDelete() :', error);
-        res.status(500).send({message : error})
+        return res.status(500).send({
+            messgae : `error in userDelete() : ${error}`
+        });
     }
 }
 
 exports.refreshAccessToken = async(req,res) => {
     try {
         
-        const token = req.cookies.refreshToken 
+        const token = req.cookies || req.body.refreshToken;
+
+        console.log('meh', token);
+        if(!token){
+            return res.status(401).send({
+                message : "Unauthorized request, access token required."
+            });
+        }
+
+        const decodedInfo = jwt.verify(token.refreshToken, process.env.SECRET);
+        
+        const user = await User.findOne(decodedInfo.id);
+        console.log('meow',user,user.refreshToken); 
+
+
+        if(!user){
+            return res.status(400).send({
+                message : "Invalid User."
+            });
+        }
+
+        if(token.refreshToken !== user.refreshToken){
+            return res.status(500).send({message : "Provided token does not seem right, please check again"});
+        }
+ 
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+
+
+        res.status(201)
+        .cookie("accessToken",accessTokens(user),options)
+        .cookie("refreshToken",refreshTokens(user),options)
+        .send({
+            accessToken : accessTokens(user),
+            refreshToken : refreshTokens(user),
+            message : "Access tokens refreshed successfully."
+        })
 
     } catch (error) {
-        console.log(`Error in refreshAccessToken : ${error}`);
+        console.log(`Error in refreshAccessToken() : ${error}`);
+        return res.status(500).send({
+            messgae : `error in refreshAccessToken() : ${error}`
+        });
     }
 }
