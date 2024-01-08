@@ -11,8 +11,8 @@ app.use(express.json({limit : '16kb'}));
 app.use(express.urlencoded({extended : true}));
 app.use(cookieParser());
 
-dbConnect().then(() => {
-    dropUser();
+dbConnect().then(() => { 
+    dropUser(); 
     console.log(`dropped collection successfully`);
 })
 

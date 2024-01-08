@@ -1,6 +1,7 @@
 const { User } = require('../models/user-model');
 const bcrypt = require('bcryptjs');
 const jwt = require("jsonwebtoken");
+const { refreshToken, accessToken } = require('../utils/token');
 
 
 exports.userRegister = async(req,res) => {
@@ -53,25 +54,6 @@ exports.userAuthentication = async(req,res) => {
             res.status(400).send({message : "Password is incorrect."});
         } 
 
-        const accessToken = jwt.sign({
-            id : {
-                username : user.username,
-                email : user.email
-            },
-            name : user.name
-        }, process.env.SECRET,{ 
-            expiresIn : 600
-        });
-
-        const refreshToken = jwt.sign({
-            id : {
-                username : user.username,
-                email : user.email
-            },
-            name : user.name
-        }, process.env.SECRET,{
-            expiresIn : 1500
-        });
 
         const response = {
             name : user.name,
@@ -79,8 +61,8 @@ exports.userAuthentication = async(req,res) => {
             email : user.email,
             avatar : req.files, 
             coverimage : user.coverimage,
-            accessToken : accessToken,
-            refreshToken  : refreshToken
+            accessToken :  accessToken(user),
+            refreshToken  : refreshToken(user)
         }
 
         const options = {
@@ -91,8 +73,8 @@ exports.userAuthentication = async(req,res) => {
         // res.status(201).send(response);
 
         res.status(201)
-        .cookie("accessToken",accessToken, options)
-        .cookie("refreshToken",refreshToken, options)
+        .cookie("accessToken",accessToken(user), options)
+        .cookie("refreshToken",refreshToken(user), options)
         .send(response)
         
     } catch (error) {
