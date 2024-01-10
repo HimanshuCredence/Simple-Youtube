@@ -242,6 +242,8 @@ exports.refreshAccessToken = async(req,res) => {
     }
 }
 
+// current user fetching
+
 exports.getCurrentUser = async(req,res) => {
     try {
 
