@@ -13,7 +13,7 @@ exports.userRegister = async(req,res) => {
             avatar : toString(req.body.avatar),
             coverimage : req.body.coverimage,
             password : bcrypt.hashSync(req.body.password,8),
-
+ 
         }
         console.log('look Here userObj in registration',{
             name : req.body.name,
@@ -31,6 +31,8 @@ exports.userRegister = async(req,res) => {
             email : createUser.email,
             avatar : req.files, 
             coverimage : createUser.coverimage ,
+            createdAt : createUser.createdAt , 
+            updatedAt : createUser.updatedAt
             
         }
         res.status(201).send(response);
@@ -64,8 +66,10 @@ exports.userAuthentication = async(req,res) => {
             name : user.name,
             username : user.username,
             email : user.email,
-            avatar : req.files, 
+            avatar : user.avatar, 
             coverimage : user.coverimage,
+            createdAt : user.createdAt ,
+            updatedAt : user.updatedAt ,
             accessToken :  accessTokens(user),
             refreshToken  : refreshTokens(user)
         }
@@ -115,8 +119,10 @@ exports.userUpdate = async(req,res) => {
             name : user.name,
             username : user.username, 
             email : user.email,
-            avatar : req.files, 
-            coverimage : user.coverimage
+            avatar : user.avatar, 
+            coverimage : user.coverimage,
+            createdAt : user.createdAt ,
+            updatedAt : user.updatedAt
         }
         
         res.status(201).send(response);
@@ -233,5 +239,35 @@ exports.refreshAccessToken = async(req,res) => {
         return res.status(500).send({
             messgae : `error in refreshAccessToken() : ${error}`
         });
+    }
+}
+
+exports.getCurrentUser = async(req,res) => {
+    try {
+
+        const response = {
+            name : req.username.name,
+            username : req.username.username,
+            email : req.username.email,
+            avatar : req.username.avatar, 
+            coverimage : req.username.coverimage,
+            accessToken :  accessTokens(req.username),
+            refreshToken  : refreshTokens(req.username),
+            createdAt : req.username.createdAt ,
+            updatedAt : req.username.updatedAt
+        }
+        
+        res
+        .status(200)
+        .send({
+            user : response,
+            message : "User fetched successfully"
+        })
+        
+    } catch (error) {
+        console.log(`Error in getCurrentUser() : ${error}`);
+        return res.status(500).send({
+            messgae : `error in getCurrentUser() : ${error}`
+        });    
     }
 }
