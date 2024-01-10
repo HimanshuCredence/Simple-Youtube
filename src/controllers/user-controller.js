@@ -76,6 +76,8 @@ exports.userAuthentication = async(req,res) => {
         }
         
         // res.status(201).send(response);
+        
+        // we are saving refresh token in db
         user.accessToken = response.accessToken;
         user.refreshToken = response.refreshToken;
         
